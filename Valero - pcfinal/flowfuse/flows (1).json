@@ -1,0 +1,89 @@
+[
+    {
+        "id": "a40df95096350c57",
+        "type": "tab",
+        "label": "Flujo 4",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "242a4ca0b8373b01",
+        "type": "inject",
+        "z": "a40df95096350c57",
+        "name": "Generar datos aleatorios",
+        "props": [],
+        "repeat": "5",
+        "crontab": "",
+        "once": true,
+        "onceDelay": "1",
+        "topic": "",
+        "x": 290,
+        "y": 240,
+        "wires": [
+            [
+                "adc2aa137ed45df7"
+            ]
+        ]
+    },
+    {
+        "id": "adc2aa137ed45df7",
+        "type": "function",
+        "z": "a40df95096350c57",
+        "name": "Crear payload sensores",
+        "func": "// Función random entero\nfunction rand(min, max) {\n    return Math.floor(Math.random() * (max - min + 1)) + min;\n}\n\n// Eventos posibles\nconst eventosPosibles = [\n    \"normal\",\n    \"actividad_alta\",\n    \"actividad_baja\",\n    \"cambio_temperatura\",\n    \"posible_depredador\",\n    \"ecosistema_inestable\"\n];\n\nconst evento = eventosPosibles[rand(0, eventosPosibles.length - 1)];\n\n// ---------------------------\n// 1. Valores base (estables)\n// ---------------------------\nlet temp = rand(25, 40);\nlet humedad = rand(40, 70);\nlet ritmo = rand(70, 110);\nlet actividad = rand(30, 70);\nlet hayDepredador = false;\n\nlet nivelRiesgo = rand(5, 25);\nlet razonRiesgo = \"Condiciones normales.\";\n\n// ---------------------------\n// 2. Ajustes por EVENTO\n// ---------------------------\nswitch (evento) {\n\n    case \"actividad_alta\":\n        actividad = rand(85, 100);\n        ritmo = rand(150, 200);\n        nivelRiesgo = rand(40, 60);\n        razonRiesgo = \"Incremento fuerte en actividad.\";\n        break;\n\n    case \"actividad_baja\":\n        actividad = rand(5, 20);\n        ritmo = rand(40, 70);\n        nivelRiesgo = rand(10, 35);\n        razonRiesgo = \"Actividad mínima detectada.\";\n        break;\n\n    case \"cambio_temperatura\":\n        temp = (Math.random() < 0.5) ? rand(55, 65) : rand(10, 20);\n        humedad = rand(15, 40);\n        ritmo = rand(120, 160);\n        nivelRiesgo = rand(50, 80);\n        razonRiesgo = \"Temperatura fuera del rango seguro.\";\n        break;\n\n    case \"posible_depredador\":\n        hayDepredador = Math.random() < 0.85;\n        actividad = rand(85, 100);\n        ritmo = rand(170, 240);\n        nivelRiesgo = rand(70, 95);\n        razonRiesgo = \"Posible depredador detectado.\";\n        break;\n\n    case \"ecosistema_inestable\":\n        humedad = rand(5, 20);\n        temp = rand(50, 65);\n        actividad = rand(10, 30);\n        ritmo = rand(90, 150);\n        nivelRiesgo = rand(90, 100);\n        razonRiesgo = \"Colapso ambiental crítico.\";\n        break;\n\n    case \"normal\":\n    default:\n        break;\n}\n\n// ---------------------------------------------------\n// 3. Coherencias globales\n// ---------------------------------------------------\n\nif (nivelRiesgo > 80) ritmo = Math.max(ritmo, rand(150, 200));\nif (nivelRiesgo > 60) ritmo = Math.max(ritmo, rand(120, 160));\n\nif (hayDepredador) {\n    ritmo = Math.max(ritmo, rand(160, 220));\n    actividad = Math.max(actividad, rand(60, 100));\n}\n\nif (humedad < 20) {\n    actividad = Math.min(actividad, rand(5, 30));\n}\n\nif (temp > 50 || temp < 15) {\n    ritmo = Math.max(ritmo, rand(110, 170));\n}\n\n// ----------------------------------------------\n// 4. ALERTA\n// ----------------------------------------------\nconst esPeligroso = nivelRiesgo >= 75 || hayDepredador;\n\n// ----------------------------------------------\n// 5. Timestamp único\n// ----------------------------------------------\nconst t = Date.now();\n\n// ----------------------------------------------\n// 6. ➤ NUEVO: Ruta dinámica para Firebase\n// ----------------------------------------------\nmsg.firebase_path = \"/eventos/\" + t;\n\n// ----------------------------------------------\n// 7. Payload final\n// ----------------------------------------------\nmsg.payload = {\n    alerta: {\n        peligro: esPeligroso\n    },\n    sensores: {\n        temperatura: temp,\n        humedad: humedad,\n        ritmo: ritmo,\n        actividad: actividad,\n        depredador: hayDepredador\n    },\n    eventos: {\n        ultimo: evento,\n        timestamp: t\n    },\n    riesgo_extincion: {\n        nivel: nivelRiesgo,\n        razon: razonRiesgo\n    }\n};\n\n// Cabecera HTTP\nmsg.headers = {\n    \"Content-Type\": \"application/json\"\n};\n\nreturn msg;\n",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 570,
+        "y": 240,
+        "wires": [
+            [
+                "2c4af8e99d4a426c",
+                "11a391514962f971"
+            ]
+        ]
+    },
+    {
+        "id": "2c4af8e99d4a426c",
+        "type": "http request",
+        "z": "a40df95096350c57",
+        "name": "Enviar PATCH a Firebase",
+        "method": "PATCH",
+        "ret": "obj",
+        "paytoqs": "ignore",
+        "url": "https://realpc4-691a4-default-rtdb.firebaseio.com{{{firebase_path}}}.json",
+        "tls": "",
+        "persist": false,
+        "proxy": "",
+        "insecureHTTPParser": false,
+        "authType": "",
+        "senderr": false,
+        "headers": [],
+        "x": 870,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "11a391514962f971",
+        "type": "debug",
+        "z": "a40df95096350c57",
+        "name": "Ver datos enviados",
+        "active": true,
+        "tosidebar": true,
+        "console": false,
+        "tostatus": false,
+        "complete": "payload",
+        "targetType": "msg",
+        "statusVal": "",
+        "statusType": "auto",
+        "x": 850,
+        "y": 340,
+        "wires": []
+    }
+]
